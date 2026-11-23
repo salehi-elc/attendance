@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0c">
+<title>حضور و غیاب — Salehi ELC</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: #0a0a0c; color: #f2f2f0; font-family: Tahoma, 'Segoe UI', sans-serif; padding-bottom: 40px; }
+  header { position: sticky; top: 0; background: #0a0a0cee; backdrop-filter: blur(6px); padding: 14px 16px 10px; border-bottom: 1px solid #26262b; z-index: 5; }
+  h1 { margin: 0; font-size: 20px; color: #bef264; }
+  .sub { font-size: 12px; color: #9c9ca3; margin-top: 2px; }
+  #syncbar { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .pill { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid #33333a; color: #d6d6da; }
+  .pill.pending { border-color: #a16207; color: #fde68a; }
+  .pill.ok { border-color: #3f6212; color: #bef264; }
+  #syncBtn { margin-inline-start: auto; background: #bef264; color: #1a2e05; border: 0; font-weight: bold; padding: 7px 14px; border-radius: 10px; font-size: 13px; cursor: pointer; }
+  #syncBtn:disabled { opacity: .45; }
+  main { padding: 14px 16px; max-width: 560px; margin: 0 auto; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+  .tab { flex: 1; text-align: center; padding: 10px 4px; border-radius: 12px; border: 1px solid #33333a; background: #141417; color: #d6d6da; font-size: 15px; font-weight: bold; cursor: pointer; }
+  .tab small { display: block; font-weight: normal; font-size: 11px; color: #9c9ca3; margin-top: 2px; }
+  .tab.active { border-color: #bef264; color: #bef264; background: #1a2410; }
+  .daterow { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .daterow button { background: #141417; color: #f2f2f0; border: 1px solid #33333a; border-radius: 10px; width: 40px; height: 40px; font-size: 18px; cursor: pointer; }
+  #dateLabel { flex: 1; text-align: center; font-size: 15px; }
+  #dateInput { background: #141417; color: #f2f2f0; border: 1px solid #33333a; border-radius: 10px; height: 40px; padding: 0 8px; font-size: 13px; color-scheme: dark; }
+  .student { display: flex; align-items: center; gap: 10px; background: #141417; border: 1px solid #26262b; border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; user-select: none; }
+  .student .name { flex: 1; font-size: 16px; }
+  .student .st { font-size: 14px; padding: 6px 12px; border-radius: 999px; min-width: 86px; text-align: center; }
+  .st.present { background: #1a2e05; color: #bef264; border: 1px solid #3f6212; }
+  .st.absent { background: #2e0505; color: #fca5a5; border: 1px solid #7f1d1d; }
+  .st.late { background: #2e2305; color: #fde68a; border: 1px solid #a16207; }
+  .student .del { color: #fca5a5; font-size: 18px; padding: 2px 6px; }
+  .row-actions { display: flex; gap: 8px; margin: 14px 0; }
+  .row-actions button { flex: 1; padding: 11px; border-radius: 12px; border: 1px solid #33333a; background: #141417; color: #d6d6da; font-size: 14px; cursor: pointer; }
+  #saveBtn { width: 100%; padding: 15px; border: 0; border-radius: 14px; background: #bef264; color: #1a2e05; font-size: 17px; font-weight: bold; cursor: pointer; }
+  #saveBtn:active { transform: scale(.99); }
+  .hint { font-size: 12px; color: #9c9ca3; text-align: center; margin-top: 8px; line-height: 1.9; }
+  h2 { font-size: 15px; color: #bef264; margin: 26px 0 10px; }
+  .session { display: flex; align-items: center; gap: 8px; background: #141417; border: 1px solid #26262b; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; font-size: 13px; }
+  .session .grow { flex: 1; }
+  .session .badge { font-size: 11px; padding: 3px 8px; border-radius: 999px; }
+  .badge.synced { background: #1a2e05; color: #bef264; }
+  .badge.waiting { background: #2e2305; color: #fde68a; }
+  #toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1d1d21; border: 1px solid #3f6212; color: #bef264; padding: 11px 20px; border-radius: 999px; font-size: 14px; transition: transform .25s; z-index: 9; white-space: nowrap; }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  .addrow { display: none; gap: 8px; margin-bottom: 10px; }
+  .addrow.open { display: flex; }
+  .addrow input { flex: 1; background: #141417; border: 1px solid #33333a; border-radius: 10px; color: #f2f2f0; padding: 10px; font-size: 14px; }
+  .addrow button { background: #bef264; color: #1a2e05; border: 0; border-radius: 10px; padding: 0 16px; font-weight: bold; cursor: pointer; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📋 حضور و غیاب</h1>
+  <div class="sub">Salehi Language Academy</div>
+  <div id="syncbar">
+    <span class="pill" id="netPill">…</span>
+    <span class="pill ok" id="pendPill">همه ثبت شده ✓</span>
+    <button id="syncBtn">☁️ همگام‌سازی</button>
+  </div>
+</header>
+<main>
+  <div class="tabs" id="tabs"></div>
+  <div class="daterow">
+    <button id="prevDay" title="روز قبل">›</button>
+    <div id="dateLabel"></div>
+    <input type="date" id="dateInput">
+    <button id="nextDay" title="روز بعد">‹</button>
+  </div>
+  <div class="addrow" id="addRow">
+    <input id="newName" placeholder="نام دانش‌آموز جدید…">
+    <button id="addBtn">افزودن</button>
+  </div>
+  <div id="students"></div>
+  <div class="row-actions">
+    <button id="allPresent">✅ همه حاضر</button>
+    <button id="editRoster">✏️ ویرایش اسامی</button>
+  </div>
+  <button id="saveBtn">ثبت حضور و غیاب</button>
+  <div class="hint">با لمس هر اسم، وضعیت عوض می‌شود: حاضر ← غایب ← دیرآمد<br>ثبت‌ها اول روی گوشی ذخیره می‌شوند و با اولین اینترنت، خودکار به گوگل شیت می‌روند.</div>
+  <h2>ثبت‌های قبلی</h2>
+  <div id="sessions"></div>
+</main>
+<div id="toast"></div>
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbzsgfHWGM0rlmUFt1DYGpIipnp-HDlV7qLTFUHGwdsLcXUNmmkCJwbwFnuqTafXYyVk/exec';
+const APP_KEY = 'att-salehi-2026';
+const CLASSES = [
+  { id: 'ARC 10', label: 'ARC 10', time: '۲۰:۴۵ – ۲۲:۱۵', days: [6, 1, 3] },
+  { id: 'ARC 21', label: 'ARC 21', time: '۱۷:۳۰ – ۱۹:۰۰', days: [0, 2, 4] },
+  { id: 'ARC 13', label: 'ARC 13', time: '۲۰:۴۵ – ۲۲:۰۰', days: [0, 2, 4] }
+];
+const DEFAULT_ROSTERS = {
+  'ARC 10': ['Aram', 'Narjes', 'Hasti', 'Zahra', 'Sahar', 'Yazdan'],
+  'ARC 21': ['Aram', 'Erfan', 'Bahar', 'Sima', 'Neda', 'Yasaman'],
+  'ARC 13': ['Fatemeh', 'Nina', 'Zahra', 'Aylar', 'Shahrad', 'Somayeh', 'Bahar']
+};
+const STATUS = {
+  present: { fa: '✅ حاضر', next: 'absent' },
+  absent: { fa: '❌ غایب', next: 'late' },
+  late: { fa: '⏰ دیرآمد', next: 'present' }
+};
+const LS_REC = 'att_records_v1', LS_ROS = 'att_rosters_v1';
+let rosters = JSON.parse(localStorage.getItem(LS_ROS) || 'null') || JSON.parse(JSON.stringify(DEFAULT_ROSTERS));
+let records = JSON.parse(localStorage.getItem(LS_REC) || '{}');
+let curClass = pickClassForNow();
+let curDate = todayISO();
+let marks = {}; // name -> status for the open session
+let editing = false;
+
+function todayISO(d) {
+  d = d || new Date();
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+function pickClassForNow() {
+  const now = new Date(), day = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
+  const todays = CLASSES.filter(c => c.days.includes(day));
+  if (!todays.length) return 'ARC 10';
+  if (todays.length === 1) return todays[0].id;
+  return mins < 19 * 60 + 30 ? todays[0].id : todays[todays.length - 1].id;
+}
+function key() { return curDate + '|' + curClass; }
+function persist() {
+  localStorage.setItem(LS_REC, JSON.stringify(records));
+  localStorage.setItem(LS_ROS, JSON.stringify(rosters));
+}
+function loadMarks() {
+  marks = {};
+  (rosters[curClass] || []).forEach(n => marks[n] = 'present');
+  const rec = records[key()];
+  if (rec) Object.keys(rec.entries).forEach(n => { if (n in marks || true) marks[n] = rec.entries[n]; });
+}
+function renderTabs() {
+  document.getElementById('tabs').innerHTML = CLASSES.map(c =>
+    '<div class="tab' + (c.id === curClass ? ' active' : '') + '" data-id="' + c.id + '">' + c.label + '<small>' + c.time + '</small></div>').join('');
+  document.querySelectorAll('.tab').forEach(t => t.onclick = () => { curClass = t.dataset.id; loadMarks(); render(); });
+}
+function renderDate() {
+  const d = new Date(curDate + 'T12:00:00');
+  document.getElementById('dateLabel').textContent = d.toLocaleDateString('fa-IR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  document.getElementById('dateInput').value = curDate;
+}
+function renderStudents() {
+  const names = Object.keys(marks);
+  document.getElementById('students').innerHTML = names.map(n =>
+    '<div class="student" data-name="' + n.replace(/"/g, '&quot;') + '"><span class="name">' + n + '</span>' +
+    (editing ? '<span class="del" data-del="' + n.replace(/"/g, '&quot;') + '">✕</span>' : '') +
+    '<span class="st ' + marks[n] + '">' + STATUS[marks[n]].fa + '</span></div>').join('');
+  document.querySelectorAll('.student').forEach(el => el.onclick = e => {
+    const n = el.dataset.name;
+    if (e.target.dataset.del) {
+      if (confirm('«' + n + '» از لیست ' + curClass + ' حذف شود؟')) {
+        rosters[curClass] = rosters[curClass].filter(x => x !== n);
+        delete marks[n]; persist(); renderStudents();
+      }
+      return;
+    }
+    marks[n] = STATUS[marks[n]].next; renderStudents();
+  });
+}
+function renderSessions() {
+  const list = Object.values(records).sort((a, b) => (b.date + b.className).localeCompare(a.date + a.className));
+  document.getElementById('sessions').innerHTML = list.length ? list.map(r => {
+    const d = new Date(r.date + 'T12:00:00');
+    const cnt = Object.values(r.entries);
+    return '<div class="session" data-k="' + r.date + '|' + r.className + '"><span class="grow">' +
+      d.toLocaleDateString('fa-IR', { weekday: 'short', day: 'numeric', month: 'long' }) + ' — ' + r.className +
+      ' <span style="color:#9c9ca3">(' + cnt.filter(s => s === 'present').length + ' حاضر، ' + cnt.filter(s => s === 'absent').length + ' غایب)</span></span>' +
+      '<span class="badge ' + (r.synced ? 'synced' : 'waiting') + '">' + (r.synced ? 'ثبت در شیت ✓' : 'در انتظار اینترنت') + '</span></div>';
+  }).join('') : '<div class="hint">هنوز ثبتی ندارید.</div>';
+  document.querySelectorAll('.session').forEach(el => el.onclick = () => {
+    const parts = el.dataset.k.split('|');
+    curDate = parts[0]; curClass = parts[1]; loadMarks(); render();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
+function renderSync() {
+  const pend = Object.values(records).filter(r => !r.synced).length;
+  const pill = document.getElementById('pendPill');
+  if (pend) { pill.textContent = pend + ' ثبت در انتظار همگام‌سازی'; pill.className = 'pill pending'; }
+  else { pill.textContent = 'همه ثبت شده ✓'; pill.className = 'pill ok'; }
+  const net = document.getElementById('netPill');
+  net.textContent = navigator.onLine ? '🟢 آنلاین' : '🔴 آفلاین';
+}
+function render() { renderTabs(); renderDate(); renderStudents(); renderSessions(); renderSync(); }
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+async function apiPost(action, payload) {
+  const r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action: action, key: APP_KEY }, payload)) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+let syncing = false;
+async function syncNow(manual) {
+  const pend = Object.values(records).filter(r => !r.synced);
+  renderSync();
+  if (!pend.length) { if (manual) toast('همه‌ی ثبت‌ها قبلاً همگام شده‌اند ✓'); return; }
+  if (!navigator.onLine) { if (manual) toast('اینترنت نیست — ثبت‌ها روی گوشی می‌مانند 📱'); return; }
+  if (syncing) return;
+  syncing = true;
+  document.getElementById('syncBtn').disabled = true;
+  try {
+    const res = await apiPost('saveAttendance', { records: pend });
+    if (res && res.ok) {
+      pend.forEach(r => { records[r.date + '|' + r.className].synced = true; });
+      persist(); toast('به گوگل شیت ثبت شد ☁️✓');
+    } else throw new Error('bad response');
+  } catch (e) {
+    if (manual) toast('همگام‌سازی نشد — بعداً خودکار تلاش می‌شود');
+  }
+  syncing = false;
+  document.getElementById('syncBtn').disabled = false;
+  render();
+}
+
+document.getElementById('saveBtn').onclick = () => {
+  records[key()] = { date: curDate, className: curClass, entries: Object.assign({}, marks), updatedAt: new Date().toISOString(), synced: false };
+  persist(); render();
+  toast(navigator.onLine ? 'ذخیره شد ✓ در حال ثبت به شیت…' : 'ذخیره شد روی گوشی ✓ (آفلاین)');
+  syncNow(false);
+};
+document.getElementById('allPresent').onclick = () => { Object.keys(marks).forEach(n => marks[n] = 'present'); renderStudents(); };
+document.getElementById('editRoster').onclick = () => {
+  editing = !editing;
+  document.getElementById('addRow').classList.toggle('open', editing);
+  document.getElementById('editRoster').textContent = editing ? '✔️ پایان ویرایش' : '✏️ ویرایش اسامی';
+  renderStudents();
+};
+document.getElementById('addBtn').onclick = () => {
+  const inp = document.getElementById('newName');
+  const n = inp.value.trim();
+  if (!n) return;
+  if (!rosters[curClass].includes(n)) rosters[curClass].push(n);
+  if (!(n in marks)) marks[n] = 'present';
+  inp.value = ''; persist(); renderStudents();
+};
+document.getElementById('prevDay').onclick = () => { const d = new Date(curDate + 'T12:00:00'); d.setDate(d.getDate() - 1); curDate = todayISO(d); loadMarks(); render(); };
+document.getElementById('nextDay').onclick = () => { const d = new Date(curDate + 'T12:00:00'); d.setDate(d.getDate() + 1); curDate = todayISO(d); loadMarks(); render(); };
+document.getElementById('dateInput').onchange = e => { if (e.target.value) { curDate = e.target.value; loadMarks(); render(); } };
+document.getElementById('syncBtn').onclick = () => syncNow(true);
+window.addEventListener('online', () => { renderSync(); syncNow(false); });
+window.addEventListener('offline', renderSync);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncNow(false); });
+
+loadMarks();
+render();
+syncNow(false);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
