@@ -53,6 +53,25 @@
   .addrow.open { display: flex; }
   .addrow input { flex: 1; background: #141417; border: 1px solid #33333a; border-radius: 10px; color: #f2f2f0; padding: 10px; font-size: 14px; }
   .addrow button { background: #bef264; color: #1a2e05; border: 0; border-radius: 10px; padding: 0 16px; font-weight: bold; cursor: pointer; }
+  .cal-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .cal-head button { background: #141417; color: #f2f2f0; border: 1px solid #33333a; border-radius: 10px; width: 40px; height: 36px; font-size: 17px; cursor: pointer; }
+  #calLabel { flex: 1; text-align: center; font-size: 16px; font-weight: bold; color: #bef264; }
+  .cal-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 6px; }
+  .cal-week span { text-align: center; font-size: 12px; color: #9c9ca3; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .cal-cell { position: relative; background: #141417; border: 1px solid #26262b; border-radius: 10px; min-height: 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; padding: 3px 0; }
+  .cal-cell.empty { background: transparent; border: 0; cursor: default; }
+  .cal-cell.today { border-color: #bef264; }
+  .cal-cell.selected { background: #1a2410; border-color: #bef264; }
+  .cal-cell .abs-badge { font-size: 10px; color: #fca5a5; background: #2e0505; border: 1px solid #7f1d1d; border-radius: 999px; padding: 0 6px; margin-top: 2px; }
+  .cal-cell .rec-dot { width: 5px; height: 5px; border-radius: 50%; background: #3f6212; margin-top: 3px; }
+  #calDetail { margin-top: 12px; }
+  .cal-day-box { background: #141417; border: 1px solid #3f6212; border-radius: 14px; padding: 12px 14px; }
+  .cal-day-box h3 { margin: 0 0 8px; font-size: 14px; color: #bef264; }
+  .cal-day-box .cls { margin-bottom: 8px; font-size: 14px; line-height: 2; }
+  .cal-day-box .cls b { color: #f2f2f0; }
+  .cal-day-box .absent-name { color: #fca5a5; }
+  .cal-day-box .all-ok { color: #9c9ca3; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -86,6 +105,15 @@
   <div class="hint">با لمس هر اسم، وضعیت عوض می‌شود: حاضر ← غایب ← دیرآمد<br>ثبت‌ها اول روی گوشی ذخیره می‌شوند و با اولین اینترنت، خودکار به گوگل شیت می‌روند.</div>
   <h2>ثبت‌های قبلی</h2>
   <div id="sessions"></div>
+  <h2>📅 تقویم</h2>
+  <div class="cal-head">
+    <button id="calPrev" title="ماه قبل">›</button>
+    <div id="calLabel"></div>
+    <button id="calNext" title="ماه بعد">‹</button>
+  </div>
+  <div class="cal-week"><span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span>ج</span></div>
+  <div class="cal-grid" id="calGrid"></div>
+  <div id="calDetail"></div>
 </main>
 <div id="toast"></div>
 <script>
@@ -189,7 +217,7 @@ function renderSync() {
   const net = document.getElementById('netPill');
   net.textContent = navigator.onLine ? '🟢 آنلاین' : '🔴 آفلاین';
 }
-function render() { renderTabs(); renderDate(); renderStudents(); renderSessions(); renderSync(); }
+function render() { renderTabs(); renderDate(); renderStudents(); renderSessions(); renderSync(); renderCalendar(); }
 
 function toast(msg) {
   const t = document.getElementById('toast');
@@ -251,13 +279,166 @@ document.getElementById('prevDay').onclick = () => { const d = new Date(curDate 
 document.getElementById('nextDay').onclick = () => { const d = new Date(curDate + 'T12:00:00'); d.setDate(d.getDate() + 1); curDate = todayISO(d); loadMarks(); render(); };
 document.getElementById('dateInput').onchange = e => { if (e.target.value) { curDate = e.target.value; loadMarks(); render(); } };
 document.getElementById('syncBtn').onclick = () => syncNow(true);
-window.addEventListener('online', () => { renderSync(); syncNow(false); });
+window.addEventListener('online', () => { renderSync(); syncNow(false); pullFromServer(); });
 window.addEventListener('offline', renderSync);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) syncNow(false); });
+
+/* ---------- Jalali calendar ---------- */
+function _div(a, b) { return ~~(a / b); }
+function _mod(a, b) { return a - ~~(a / b) * b; }
+const JBREAKS = [-61, 9, 38, 199, 426, 686, 756, 818, 1111, 1181, 1210, 1635, 2060, 2097, 2192, 2262, 2324, 2394, 2456, 3178];
+function jalCal(jy) {
+  const bl = JBREAKS.length, gy = jy + 621;
+  let leapJ = -14, jp = JBREAKS[0], jm, jump, leap, n, i;
+  for (i = 1; i < bl; i++) { jm = JBREAKS[i]; jump = jm - jp; if (jy < jm) break; leapJ += _div(jump, 33) * 8 + _div(_mod(jump, 33), 4); jp = jm; }
+  n = jy - jp;
+  leapJ += _div(n, 33) * 8 + _div(_mod(n, 33) + 3, 4);
+  if (_mod(jump, 33) === 4 && jump - n === 4) leapJ += 1;
+  const leapG = _div(gy, 4) - _div((_div(gy, 100) + 1) * 3, 4) - 150;
+  const march = 20 + leapJ - leapG;
+  if (jump - n < 6) n = n - jump + _div(jump + 4, 33) * 33;
+  leap = _mod(_mod(n + 1, 33) - 1, 4);
+  if (leap === -1) leap = 4;
+  return { leap: leap, gy: gy, march: march };
+}
+function j2d(jy, jm, jd) {
+  const r = jalCal(jy);
+  return g2d(r.gy, 3, r.march) + (jm - 1) * 31 - _div(jm, 7) * (jm - 7) + jd - 1;
+}
+function d2j(jdn) {
+  const gy = d2g(jdn).gy, jy = gy - 621, r = jalCal(jy);
+  const jdn1f = g2d(gy, 3, r.march);
+  let jd = jdn - jdn1f, jm, k;
+  if (jd >= 0) {
+    if (jd <= 185) { jm = 1 + _div(jd, 31); jd = _mod(jd, 31); return { jy: jy, jm: jm, jd: jd + 1 }; }
+    jd -= 186;
+  } else {
+    const jy2 = jy - 1;
+    jd += 179;
+    if (r.leap === 1) jd += 1;
+    if (jd <= 185) { jm = 7 + _div(jd, 30); jd = _mod(jd, 30); return { jy: jy2, jm: jm, jd: jd + 1 }; }
+    jd -= 186;
+    return { jy: jy2, jm: 12, jd: jd + 1 };
+  }
+  jm = 7 + _div(jd, 30); k = _mod(jd, 30);
+  return { jy: jy, jm: jm, jd: k + 1 };
+}
+function g2d(gy, gm, gd) {
+  let d = _div((gy + _div(gm - 8, 6) + 100100) * 1461, 4) + _div(153 * _mod(gm + 9, 12) + 2, 5) + gd - 34840408;
+  d = d - _div(_div(gy + 100100 + _div(gm - 8, 6), 100) * 3, 4) + 752;
+  return d;
+}
+function d2g(jdn) {
+  let j = 4 * jdn + 139361631;
+  j += _div(_div(4 * jdn + 183187720, 146097) * 3, 4) * 4 - 3908;
+  const i = _div(_mod(j, 1461), 4) * 5 + 308;
+  const gd = _div(_mod(i, 153), 5) + 1, gm = _mod(_div(i, 153), 12) + 1, gy = _div(j, 1461) - 100100 + _div(8 - gm, 6);
+  return { gy: gy, gm: gm, gd: gd };
+}
+function toJalaali(gy, gm, gd) { return d2j(g2d(gy, gm, gd)); }
+function toGregorian(jy, jm, jd) { return d2g(j2d(jy, jm, jd)); }
+function jalaliMonthLength(jy, jm) {
+  if (jm <= 6) return 31;
+  if (jm <= 11) return 30;
+  return jalCal(jy).leap === 0 ? 30 : 29;
+}
+const JMONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+function faNum(n) { return String(n).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]); }
+function isoToJalali(iso) {
+  const p = iso.split('-').map(Number);
+  return toJalaali(p[0], p[1], p[2]);
+}
+function jalaliToISO(jy, jm, jd) {
+  const g = toGregorian(jy, jm, jd), p = n => String(n).padStart(2, '0');
+  return g.gy + '-' + p(g.gm) + '-' + p(g.gd);
+}
+const _nowJ = (() => { const t = new Date(); return toJalaali(t.getFullYear(), t.getMonth() + 1, t.getDate()); })();
+let calJY = _nowJ.jy, calJM = _nowJ.jm, calSel = null; // selected Jalali day {jy,jm,jd}
+
+function dayData(jy, jm, jd) {
+  const iso = jalaliToISO(jy, jm, jd);
+  const sessions = Object.values(records).filter(r => r.date === iso);
+  let absents = 0;
+  sessions.forEach(s => Object.values(s.entries).forEach(v => { if (v === 'absent') absents++; }));
+  return { iso: iso, sessions: sessions, absents: absents };
+}
+function renderCalendar() {
+  const grid = document.getElementById('calGrid');
+  if (!grid) return;
+  document.getElementById('calLabel').textContent = JMONTHS[calJM - 1] + ' ' + faNum(calJY);
+  const len = jalaliMonthLength(calJY, calJM);
+  const firstG = toGregorian(calJY, calJM, 1);
+  const firstDow = new Date(firstG.gy, firstG.gm - 1, firstG.gd).getDay(); // 0 Sun .. 6 Sat
+  const startCol = (firstDow + 1) % 7; // Saturday-first columns
+  let html = '';
+  for (let i = 0; i < startCol; i++) html += '<div class="cal-cell empty"></div>';
+  for (let d = 1; d <= len; d++) {
+    const data = dayData(calJY, calJM, d);
+    const isToday = _nowJ.jy === calJY && _nowJ.jm === calJM && _nowJ.jd === d;
+    const isSel = calSel && calSel.jy === calJY && calSel.jm === calJM && calSel.jd === d;
+    html += '<div class="cal-cell' + (isToday ? ' today' : '') + (isSel ? ' selected' : '') + '" data-day="' + d + '">' + faNum(d) +
+      (data.absents ? '<span class="abs-badge">❌ ' + faNum(data.absents) + ' غایب</span>' : (data.sessions.length ? '<span class="rec-dot"></span>' : '')) + '</div>';
+  }
+  grid.innerHTML = html;
+  grid.querySelectorAll('.cal-cell[data-day]').forEach(el => el.onclick = () => {
+    calSel = { jy: calJY, jm: calJM, jd: Number(el.dataset.day) };
+    renderCalendar();
+  });
+  renderCalDetail();
+}
+function renderCalDetail() {
+  const box = document.getElementById('calDetail');
+  if (!calSel) { box.innerHTML = '<div class="hint">روی هر روز بزنید تا غایب‌های آن روز را ببینید.</div>'; return; }
+  const data = dayData(calSel.jy, calSel.jm, calSel.jd);
+  const g = new Date(data.iso + 'T12:00:00');
+  const title = g.toLocaleDateString('fa-IR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  if (!data.sessions.length) {
+    box.innerHTML = '<div class="cal-day-box"><h3>' + title + '</h3><div class="all-ok">برای این روز ثبتی نیست.</div></div>';
+    return;
+  }
+  let html = '<div class="cal-day-box"><h3>' + title + '</h3>';
+  data.sessions.sort((a, b) => a.className.localeCompare(b.className)).forEach(s => {
+    const abs = Object.keys(s.entries).filter(n => s.entries[n] === 'absent');
+    html += '<div class="cls"><b>' + s.className + ':</b> ' +
+      (abs.length ? abs.map(n => '<span class="absent-name">❌ ' + n + '</span>').join('، ') : '<span class="all-ok">همه حاضر بودند ✓</span>') + '</div>';
+  });
+  box.innerHTML = html + '</div>';
+}
+document.getElementById('calPrev').onclick = () => {
+  calJM--; if (calJM < 1) { calJM = 12; calJY--; }
+  renderCalendar();
+};
+document.getElementById('calNext').onclick = () => {
+  calJM++; if (calJM > 12) { calJM = 1; calJY++; }
+  renderCalendar();
+};
+
+async function pullFromServer() {
+  if (!navigator.onLine || API_URL.indexOf('http') !== 0) return;
+  try {
+    const r = await fetch(API_URL + '?action=read&key=' + encodeURIComponent(APP_KEY));
+    const data = await r.json();
+    if (!data || !data.ok) return;
+    let changed = false;
+    (data.sessions || []).forEach(s => {
+      const k = s.date + '|' + s.className;
+      if (records[k] && !records[k].synced) return; // keep unsynced local edits
+      const entries = {};
+      Object.keys(s.entries).forEach(n => {
+        const v = String(s.entries[n]);
+        entries[n] = v.indexOf('❌') === 0 ? 'absent' : (v.indexOf('⏰') === 0 ? 'late' : 'present');
+      });
+      records[k] = { date: s.date, className: s.className, entries: entries, updatedAt: records[k] ? records[k].updatedAt : '', synced: true };
+      changed = true;
+    });
+    if (changed) { persist(); render(); }
+  } catch (e) {}
+}
 
 loadMarks();
 render();
 syncNow(false);
+pullFromServer();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
