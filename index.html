@@ -10,7 +10,22 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  body { margin: 0; background: #0a0a0c; color: #f2f2f0; font-family: Tahoma, 'Segoe UI', sans-serif; padding-bottom: 40px; }
+  body { margin: 0; background: #0a0a0c; color: #f2f2f0; font-family: Tahoma, 'Segoe UI', sans-serif; padding-bottom: 96px; }
+  .view { display: none; }
+  .view.active { display: block; }
+  #dock { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(16,16,19,.96); backdrop-filter: blur(8px); border-top: 1px solid #26262b; display: flex; z-index: 8; padding-bottom: env(safe-area-inset-bottom); }
+  .dock-btn { flex: 1; background: none; border: 0; color: #9c9ca3; font-family: inherit; font-size: 12px; padding: 8px 0 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .dock-btn .dic { font-size: 20px; line-height: 1.2; }
+  .dock-btn.active { color: #bef264; }
+  .ov-wrap { overflow-x: auto; border: 1px solid #26262b; border-radius: 14px; background: #141417; }
+  .ov-table { border-collapse: separate; border-spacing: 4px; padding: 6px; }
+  .ov-table th, .ov-table td { text-align: center; }
+  .ov-name { position: sticky; right: 0; background: #141417; text-align: right !important; padding: 6px 8px; font-size: 14px; white-space: nowrap; z-index: 2; }
+  td.ov-cell { width: 34px; height: 34px; border-radius: 9px; font-size: 15px; }
+  td.ov-cell.p { background: #1a2e05; border: 1px solid #3f6212; color: #bef264; }
+  td.ov-cell.a { background: #2e0505; border: 1px solid #7f1d1d; color: #fca5a5; }
+  .ov-date { font-size: 11px; color: #9c9ca3; white-space: nowrap; padding: 2px; font-weight: normal; }
+  .ov-total { font-weight: bold; color: #fca5a5; font-size: 14px; }
   header { position: sticky; top: 0; background: #0a0a0cee; backdrop-filter: blur(6px); padding: 14px 16px 10px; border-bottom: 1px solid #26262b; z-index: 5; }
   h1 { margin: 0; font-size: 20px; color: #bef264; }
   .sub { font-size: 12px; color: #9c9ca3; margin-top: 2px; }
@@ -47,7 +62,7 @@
   .session .badge { font-size: 11px; padding: 3px 8px; border-radius: 999px; }
   .badge.synced { background: #1a2e05; color: #bef264; }
   .badge.waiting { background: #2e2305; color: #fde68a; }
-  #toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1d1d21; border: 1px solid #3f6212; color: #bef264; padding: 11px 20px; border-radius: 999px; font-size: 14px; transition: transform .25s; z-index: 9; white-space: nowrap; }
+  #toast { position: fixed; bottom: 92px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1d1d21; border: 1px solid #3f6212; color: #bef264; padding: 11px 20px; border-radius: 999px; font-size: 14px; transition: transform .25s; z-index: 9; white-space: nowrap; }
   #toast.show { transform: translateX(-50%) translateY(0); }
   .addrow { display: none; gap: 8px; margin-bottom: 10px; }
   .addrow.open { display: flex; }
@@ -85,6 +100,7 @@
   </div>
 </header>
 <main>
+  <section id="view-home" class="view active">
   <div class="tabs" id="tabs"></div>
   <div class="daterow">
     <button id="prevDay" title="روز قبل">›</button>
@@ -102,10 +118,16 @@
     <button id="editRoster">✏️ ویرایش اسامی</button>
   </div>
   <button id="saveBtn">ثبت حضور و غیاب</button>
-  <div class="hint">با لمس هر اسم، وضعیت عوض می‌شود: حاضر ← غایب ← دیرآمد<br>ثبت‌ها اول روی گوشی ذخیره می‌شوند و با اولین اینترنت، خودکار به گوگل شیت می‌روند.</div>
+  <div class="hint">با لمس هر اسم، وضعیت عوض می‌شود: حاضر ← غایب<br>ثبت‌ها اول روی گوشی ذخیره می‌شوند و با اولین اینترنت، خودکار به گوگل شیت می‌روند.</div>
   <h2>ثبت‌های قبلی</h2>
   <div id="sessions"></div>
-  <h2>📅 تقویم</h2>
+  </section>
+  <section id="view-overview" class="view">
+  <div class="tabs" id="ovTabs"></div>
+  <div class="ov-wrap"><div id="ovGrid"></div></div>
+  <div class="hint">هر ستون یک جلسه است: ✓ یعنی حاضر و ✕ یعنی غایب.<br>ستون آخر، تعداد کل غیبت‌های هر دانش‌آموز است.</div>
+  </section>
+  <section id="view-cal" class="view">
   <div class="cal-head">
     <button id="calPrev" title="ماه قبل">›</button>
     <div id="calLabel"></div>
@@ -114,7 +136,13 @@
   <div class="cal-week"><span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span>ج</span></div>
   <div class="cal-grid" id="calGrid"></div>
   <div id="calDetail"></div>
+  </section>
 </main>
+<nav id="dock">
+  <button class="dock-btn active" data-view="view-home"><span class="dic">🏠</span>صفحه اصلی</button>
+  <button class="dock-btn" data-view="view-overview"><span class="dic">📋</span>دید کلی</button>
+  <button class="dock-btn" data-view="view-cal"><span class="dic">📅</span>تقویم</button>
+</nav>
 <div id="toast"></div>
 <script>
 const API_URL = 'https://script.google.com/macros/s/AKfycbzsgfHWGM0rlmUFt1DYGpIipnp-HDlV7qLTFUHGwdsLcXUNmmkCJwbwFnuqTafXYyVk/exec';
@@ -131,12 +159,12 @@ const DEFAULT_ROSTERS = {
 };
 const STATUS = {
   present: { fa: '✅ حاضر', next: 'absent' },
-  absent: { fa: '❌ غایب', next: 'late' },
-  late: { fa: '⏰ دیرآمد', next: 'present' }
+  absent: { fa: '❌ غایب', next: 'present' }
 };
 const LS_REC = 'att_records_v1', LS_ROS = 'att_rosters_v1';
 let rosters = JSON.parse(localStorage.getItem(LS_ROS) || 'null') || JSON.parse(JSON.stringify(DEFAULT_ROSTERS));
 let records = JSON.parse(localStorage.getItem(LS_REC) || '{}');
+Object.values(records).forEach(r => Object.keys(r.entries || {}).forEach(n => { if (r.entries[n] === 'late') r.entries[n] = 'present'; }));
 let curClass = pickClassForNow();
 let curDate = todayISO();
 let marks = {}; // name -> status for the open session
@@ -163,7 +191,7 @@ function loadMarks() {
   marks = {};
   (rosters[curClass] || []).forEach(n => marks[n] = 'present');
   const rec = records[key()];
-  if (rec) Object.keys(rec.entries).forEach(n => { if (n in marks || true) marks[n] = rec.entries[n]; });
+  if (rec) Object.keys(rec.entries).forEach(n => { marks[n] = STATUS[rec.entries[n]] ? rec.entries[n] : 'present'; });
 }
 function renderTabs() {
   document.getElementById('tabs').innerHTML = CLASSES.map(c =>
@@ -206,6 +234,7 @@ function renderSessions() {
   document.querySelectorAll('.session').forEach(el => el.onclick = () => {
     const parts = el.dataset.k.split('|');
     curDate = parts[0]; curClass = parts[1]; loadMarks(); render();
+    switchView('view-home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 }
@@ -217,7 +246,46 @@ function renderSync() {
   const net = document.getElementById('netPill');
   net.textContent = navigator.onLine ? '🟢 آنلاین' : '🔴 آفلاین';
 }
-function render() { renderTabs(); renderDate(); renderStudents(); renderSessions(); renderSync(); renderCalendar(); }
+function render() { renderTabs(); renderDate(); renderStudents(); renderSessions(); renderSync(); renderCalendar(); renderOverview(); }
+
+/* ---------- Views + overview grid ---------- */
+let ovClass = null;
+function switchView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === id));
+  document.querySelectorAll('.dock-btn').forEach(b => b.classList.toggle('active', b.dataset.view === id));
+  if (id === 'view-overview') renderOverview();
+  if (id === 'view-cal') renderCalendar();
+  window.scrollTo({ top: 0 });
+}
+document.querySelectorAll('.dock-btn').forEach(b => b.onclick = () => switchView(b.dataset.view));
+function renderOverview() {
+  const tabs = document.getElementById('ovTabs');
+  if (!tabs) return;
+  if (!ovClass) ovClass = curClass;
+  tabs.innerHTML = CLASSES.map(c =>
+    '<div class="tab' + (c.id === ovClass ? ' active' : '') + '" data-id="' + c.id + '">' + c.label + '</div>').join('');
+  tabs.querySelectorAll('.tab').forEach(t => t.onclick = () => { ovClass = t.dataset.id; renderOverview(); });
+  const sessions = Object.values(records).filter(r => r.className === ovClass).sort((a, b) => a.date.localeCompare(b.date));
+  const grid = document.getElementById('ovGrid');
+  if (!sessions.length) { grid.innerHTML = '<div class="hint" style="padding:16px;">برای این کلاس هنوز ثبتی نیست.</div>'; return; }
+  const names = (rosters[ovClass] || []).slice();
+  sessions.forEach(s => Object.keys(s.entries).forEach(n => { if (names.indexOf(n) === -1) names.push(n); }));
+  let html = '<table class="ov-table"><tr><th class="ov-name">دانش‌آموز</th>';
+  sessions.forEach(s => { const j = isoToJalali(s.date); html += '<th class="ov-date">' + faNum(j.jd) + '/' + faNum(j.jm) + '</th>'; });
+  html += '<th class="ov-date">غیبت</th></tr>';
+  names.forEach(n => {
+    let abs = 0;
+    html += '<tr><td class="ov-name">' + n + '</td>';
+    sessions.forEach(s => {
+      const v = s.entries[n];
+      if (v === 'absent') { abs++; html += '<td class="ov-cell a">✕</td>'; }
+      else if (v === 'present') html += '<td class="ov-cell p">✓</td>';
+      else html += '<td class="ov-cell">—</td>';
+    });
+    html += '<td class="ov-total">' + (abs ? faNum(abs) : '—') + '</td></tr>';
+  });
+  grid.innerHTML = html + '</table>';
+}
 
 function toast(msg) {
   const t = document.getElementById('toast');
@@ -426,7 +494,7 @@ async function pullFromServer() {
       const entries = {};
       Object.keys(s.entries).forEach(n => {
         const v = String(s.entries[n]);
-        entries[n] = v.indexOf('❌') === 0 ? 'absent' : (v.indexOf('⏰') === 0 ? 'late' : 'present');
+        entries[n] = v.indexOf('❌') === 0 ? 'absent' : 'present';
       });
       records[k] = { date: s.date, className: s.className, entries: entries, updatedAt: records[k] ? records[k].updatedAt : '', synced: true };
       changed = true;
